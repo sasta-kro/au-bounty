@@ -1,0 +1,115 @@
+name: au-bounty
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: aubounty
+      POSTGRES_PASSWORD: aubounty
+      POSTGRES_DB: aubounty
+    volumes:
+      - aubounty-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aubounty -d aubounty"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: aubounty
+      MINIO_ROOT_PASSWORD: aubounty
+    volumes:
+      - aubounty-miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 aubounty aubounty &&
+      (mc mb -p local/aubounty || true)
+      "
+    restart: "no"
+
+  api:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://aubounty:aubounty@postgres:5432/aubounty?schema=public
+      PORT: "4000"
+      CORS_ORIGIN: http://localhost:8080,http://localhost:5173
+      DEV_AUTH: ${DEV_AUTH:-1}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      AUTH_CALLBACK_BASE: http://localhost:4000/aubounty/api
+      APP_ORIGIN: http://localhost:8080
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      COOKIE_SECURE: "false"
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: aubounty
+      S3_ACCESS_KEY: aubounty
+      S3_SECRET_KEY: aubounty
+      S3_FORCE_PATH_STYLE: "true"
+      MAX_UPLOAD_MB: "10"
+      MAIL_TRANSPORT: console
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      GOOGLE_MAPS_KEY: ${GOOGLE_MAPS_KEY:-}
+      GOOGLE_TRANSLATE_KEY: ${GOOGLE_TRANSLATE_KEY:-}
+      WEATHER_LAT: "13.6146"
+      WEATHER_LON: "100.7121"
+      WEATHER_LABEL: Bang Na
+      PEER_INBOUND_API_KEY: ${PEER_API_KEY:-demo-key}
+      PEER_OUTBOUND_URL: http://peer-mock:7000
+      PEER_OUTBOUND_API_KEY: ${PEER_API_KEY:-demo-key}
+      ALERT_COOLDOWN_MIN: "5"
+      SECRETS_PROVIDER: env
+      SEED_ON_BOOT: "1"
+    ports:
+      - "4000:4000"
+
+  peer-mock:
+    build: ./backend
+    command: ["node", "peer-mock/server.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DO_NOT_MIGRATE: "1"
+      PORT: "7000"
+      MOCK_API_KEY: ${PEER_API_KEY:-demo-key}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||7000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "${PEER_HOST_PORT:-7000}:7000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  aubounty-pgdata:
+  aubounty-miniodata:
