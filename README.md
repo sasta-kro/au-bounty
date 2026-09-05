@@ -10,7 +10,6 @@ au-bounty/
 ├── backend/               # Git submodule
 ├── docker-compose.yml     # Full-stack local environment
 ├── docs/                  # Project-level documentation
-├── scripts/               # Setup and development utilities
 ├── .github/workflows/     # Integration and project-level CI
 └── README.md
 ```
@@ -155,7 +154,6 @@ The umbrella repository should contain project-wide concerns such as:
 * developer setup instructions
 * integration and end-to-end testing
 * deployment documentation
-* shared scripts
 * project-level GitHub Actions
 * API integration notes
 * diagrams and technical decisions
