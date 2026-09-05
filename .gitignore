@@ -1,0 +1,6 @@
+.idea/
+.DS_Store
+.memory/
+docs/*
+!docs/reports/
+!docs/plan/
