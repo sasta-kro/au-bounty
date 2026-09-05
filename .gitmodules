@@ -1,0 +1,6 @@
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/minkhaung-mkks/au-bounty-frontend.git
+[submodule "backend"]
+	path = backend
+	url = https://github.com/minkhaung-mkks/au-bounty-backend.git
