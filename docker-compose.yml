@@ -16,7 +16,8 @@ services:
       retries: 12
 
   minio:
-    image: minio/minio
+    # MinIO left Docker Hub in 2025; quay.io is the maintained registry.
+    image: quay.io/minio/minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: aubounty
@@ -30,7 +31,7 @@ services:
       retries: 12
 
   minio-init:
-    image: minio/mc
+    image: quay.io/minio/mc
     depends_on:
       minio:
         condition: service_healthy
