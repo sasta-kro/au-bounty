@@ -329,3 +329,15 @@ Symptom: on the VM's create form the map never rendered and place search said "u
 Cause: two different keys. The vault's google-maps-key is the server key (Geocoding + Static Maps, used by the api). The map picker and Places autocomplete in the browser run on a separate public browser key that must be baked into the bundle at build time as `VITE_GOOGLE_MAPS_KEY`. The 0.4 frontend image was built without it, so the loader rejected with "No Google Maps browser key configured" and the form fell back to manual coordinates. The server key was never broken.
 
 Fix: frontend commit `53dc533` plumbs `--build-arg VITE_GOOGLE_MAPS_KEY` into the vite build inside the image. The key was validated first by requesting the Maps JavaScript API with the VM's URL as the HTTP Referer (15 KB of script, no error markers). Image `:0.4.1` built with the key, azure compose pinned to it. Verified the served bundle contains the loader and a baked `AIza...` key. The browser key is public by design and depends on referrer restrictions in the Google console covering the VM domain.
+
+## 16. CI image pipeline (umbrella `a8d1dc0`)
+
+Every push to the umbrella's main now builds and pushes both images. The images job runs only after the existing backend tests and frontend lint + build jobs pass, logs into ghcr with the workflow's built in GITHUB_TOKEN (no PAT: both packages are linked to the repository with Write access, done once in the GitHub UI), and builds linux/amd64 from the pinned submodule commits.
+
+Tags: `:sha-<short umbrella sha>` is the immutable per build tag and `:main` the moving alias. A release number is an alias, not a rebuild: `docker buildx imagetools create -t ghcr.io/sasta-kro/au-bounty-backend:0.4.2 ghcr.io/sasta-kro/au-bounty-backend:sha-a8d1dc0`.
+
+The maps browser key needed no Actions secret: `frontend/.env.production` (commit `431a10f`) is loaded by vite in production mode, so the key bakes into the bundle identically in CI, in the Docker image, and in a plain local `npm run build`. The first CI run (35091751732) went green end to end and produced `sha-a8d1dc0` on both packages.
+
+The azure compose now tracks `:main`, so a VM update is pull + up. Pin a `:sha-...` tag in the compose for demo days so nothing can move under a live demo.
+
+Note: a staged deletion of `public/favicon.svg` (left in the index by earlier work) rode along in commit `431a10f` and was restored in `b3e244c` after noticing `index.html` still references it.

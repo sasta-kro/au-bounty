@@ -52,7 +52,8 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/sasta-kro/au-bounty-backend:0.4
+    # :main moves with every green CI build; pin a :sha-... tag for demo days.
+    image: ghcr.io/sasta-kro/au-bounty-backend:main
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,7 +107,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/sasta-kro/au-bounty-frontend:0.4.1
+    image: ghcr.io/sasta-kro/au-bounty-frontend:main
     depends_on:
       api:
         condition: service_healthy
