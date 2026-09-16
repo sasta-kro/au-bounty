@@ -76,32 +76,10 @@ services:
       WEATHER_LAT: "13.6146"
       WEATHER_LON: "100.7121"
       WEATHER_LABEL: Bang Na
-      PEER_INBOUND_API_KEY: ${PEER_API_KEY:-demo-key}
-      PEER_OUTBOUND_URL: http://peer-mock:7000
-      PEER_OUTBOUND_API_KEY: ${PEER_API_KEY:-demo-key}
-      ALERT_COOLDOWN_MIN: "5"
       SECRETS_PROVIDER: env
       SEED_ON_BOOT: "1"
     ports:
       - "4000:4000"
-
-  peer-mock:
-    build: ./backend
-    command: ["node", "peer-mock/server.js"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DO_NOT_MIGRATE: "1"
-      PORT: "7000"
-      MOCK_API_KEY: ${PEER_API_KEY:-demo-key}
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||7000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    ports:
-      - "${PEER_HOST_PORT:-7000}:7000"
 
   frontend:
     build: ./frontend
