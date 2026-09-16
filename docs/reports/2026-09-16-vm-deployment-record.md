@@ -255,3 +255,57 @@ Symptom: `docker compose ps` showed peer-mock unhealthy although `/health` answe
 Cause: the azure compose defined peer-mock without its own healthcheck, so it inherited the backend image HEALTHCHECK, which probes `/aubounty/api/health`. peer-mock only serves `/health`, so the probe always failed. The root dev compose carries an explicit override for exactly this, and the azure compose was missing it.
 
 Fix: the same healthcheck override from the root compose was added to `docker-compose.azure.yml` and applied with `up -d`. peer-mock then reported healthy. Functionally nothing was broken before, since nothing depends on peer-mock health, but the status was misleading during debugging.
+
+## 14. Secrets moved to Azure Key Vault
+
+Goal: no secret values on the VM except the one credential that unlocks the vault, the w9 course pattern.
+
+### 14.1 Azure side (all CLI)
+
+Vault `au-bounty-kv-199c` in the VM's resource group `CSX4110-BACKENDDEV-2`, region `indonesiacentral`, RBAC authorization and purge protection on:
+
+```bash
+az keyvault create --name au-bounty-kv-199c --resource-group CSX4110-BACKENDDEV-2 \
+  --location indonesiacentral --enable-rbac-authorization true --enable-purge-protection true
+```
+
+Humans got Key Vault Secrets Officer (read, set, rotate secrets, no access management) on the vault scope: u6712122@au.edu, u6720065@au.edu, u6712164@au.edu. On an RBAC vault even the creator needs an explicit data plane role.
+
+The app identity is a service principal, created with a read only role on the vault only:
+
+```bash
+az ad sp create-for-rbac --name au-bounty-vault-reader \
+  --role "Key Vault Secrets User" \
+  --scopes /subscriptions/<sub>/resourceGroups/CSX4110-BACKENDDEV-2/providers/Microsoft.KeyVault/vaults/au-bounty-kv-199c
+```
+
+The output (appId 7e2a3d2b-..., password, tenant) goes straight into the VM env file. The password is shown once and can only be reset, never recovered.
+
+Six secrets, names use dashes because Key Vault allows only letters, digits, dashes: entra-client-secret, jwt-secret, peer-api-key, resend-api-key, google-maps-key, google-translate-key. The first three values were read from the old VM env file and piped into the CLI without display. The last three came from the teammate's values.
+
+### 14.2 Backend loader
+
+Backend commits `9d60b5e` and `dd41355`. New `src/lib/secrets.js`: `loadSecrets()` is a no-op unless `SECRETS_PROVIDER=keyvault` and `KEY_VAULT_URL` are set, so local dev and CI never touch Azure. Active mode: `DefaultAzureCredential` (the AZURE_* trio from env first, managed identity automatically later), fetch the mapped secrets, write them into `process.env` before the app listens, log the loaded names only, exit 1 if anything fails. `src/index.js` awaits it first in boot. `peer-mock/server.js` awaits it for just peer-api-key and falls back to it for MOCK_API_KEY with `||` because compose injects an empty string.
+
+New npm deps: `@azure/keyvault-secrets`, `@azure/identity`. 228 tests pass with the provider off.
+
+### 14.3 VM deployment shape
+
+`.env.azure` on the VM now holds: SECRETS_PROVIDER=keyvault, KEY_VAULT_URL, the AZURE_* service principal trio, the Entra identifiers (not secrets), MAIL_TRANSPORT=resend and MAIL_FROM. No other secret values on disk. In the container environment all six app secrets arrive empty and are filled into process memory at boot, verified with a length check on `docker inspect`. The only secret on the box is the service principal password.
+
+The azure compose secret passthroughs became optional (`${VAR:-}`), because in keyvault mode the values no longer exist in any env file and the loader enforces them instead. MAIL_TRANSPORT became `${MAIL_TRANSPORT:-console}` so the VM flips mail to resend via env.
+
+### 14.4 Verification
+
+- Boot log: `secrets: loaded from key vault: entra-client-secret, jwt-secret, peer-api-key, resend-api-key, google-maps-key, google-translate-key`, same pattern in peer-mock for the one key it needs
+- `/meta`: `maps: true, translation: true` flipped live, both come from vault loaded keys
+- `/auth/login` still 302s to the right tenant, the Entra secret now comes from the vault
+- `docker inspect` shows the six env values empty, AZURE_CLIENT_SECRET 40 chars
+
+### 14.5 Rotating later
+
+Change the value in the vault (portal or `az keyvault secret set`), then `docker compose -f docker-compose.azure.yml --env-file .env.azure up -d` on the VM to force a restart and reload. No image rebuild, no env file edit. Sessions survive JWT_SECRET rotation up to the 1h token life.
+
+### 14.6 Dev machine incident during this work
+
+Docker Desktop on the Mac crashed with a full disk (Docker.raw had grown to 13G real usage on a nearly full drive). After the crash, freshly pulled images executed their entrypoints as zero byte files (`exec format error`) while the store metadata still reported healthy images. Restarting the app did not repair it. Deleting Docker.raw (the user ran it manually after a full quit) reset the store to factory state and fixed execution. Cost: all local images, containers, and volumes, including another project's stack, which was accepted. The lesson: when the host disk fills during layer extraction, the snapshot store corrupts silently, and app restarts cannot repair it, only a data reset can.
