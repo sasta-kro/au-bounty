@@ -321,3 +321,11 @@ Backend `981a3b9`+ removed the peer API and peer-mock entirely and added boot ti
 - Flaky test noted: `tests/files.test.js > unauthenticated callers are rejected` fails roughly 1 run in 3, unrelated to deployment changes (pre-existing race in the teammate's test).
 
 Verification: admins seeded on boot, five vault secrets loaded, peer-mock container gone, `/meta` capabilities unchanged and live, `/aubounty/admin-login` route serves, `POST /auth/admin/login` validates its body.
+
+### 15.1 Map picker and place search (frontend 0.4.1)
+
+Symptom: on the VM's create form the map never rendered and place search said "unavailable", while `/meta` still reported maps: true.
+
+Cause: two different keys. The vault's google-maps-key is the server key (Geocoding + Static Maps, used by the api). The map picker and Places autocomplete in the browser run on a separate public browser key that must be baked into the bundle at build time as `VITE_GOOGLE_MAPS_KEY`. The 0.4 frontend image was built without it, so the loader rejected with "No Google Maps browser key configured" and the form fell back to manual coordinates. The server key was never broken.
+
+Fix: frontend commit `53dc533` plumbs `--build-arg VITE_GOOGLE_MAPS_KEY` into the vite build inside the image. The key was validated first by requesting the Maps JavaScript API with the VM's URL as the HTTP Referer (15 KB of script, no error markers). Image `:0.4.1` built with the key, azure compose pinned to it. Verified the served bundle contains the loader and a baked `AIza...` key. The browser key is public by design and depends on referrer restrictions in the Google console covering the VM domain.
