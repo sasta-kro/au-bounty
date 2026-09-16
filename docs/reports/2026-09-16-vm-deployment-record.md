@@ -237,3 +237,21 @@ docker compose -f docker-compose.azure.yml --env-file .env.azure up -d
 - A raw curl at a ghcr.io manifest returns 401 even for public images. Testing anonymous pull properly needs the token dance (GET https://ghcr.io/token?scope=repository:OWNER/IMAGE:pull, then send that token).
 - For localhost redirect URIs Microsoft ignores the port when matching. Everywhere else the port must match exactly.
 - The old PM2 Node API and the Go service on the VM are not running after past reboots. That is unrelated to this deployment. AU Bounty does not depend on them.
+
+## 13. Post deployment fixes
+
+### 13.1 Microsoft login landed at the domain root
+
+Symptom: after Microsoft login the browser arrived at `https://FQDN/` instead of `https://FQDN/aubounty/`.
+
+Cause chain: the SPA stores the intended destination as a react-router path, and router paths never include the basename, so `/aubounty/board` was stored as `/board`. The login URL carried that bare path as returnTo. The backend joins returnTo onto APP_ORIGIN, which is the bare origin `https://FQDN`, so the final redirect went to `https://FQDN/` or `https://FQDN/board`, outside the app. Before the subpath deployment the SPA lived at the domain root, so a bare path glued onto a bare origin was correct. The mount exposed the assumption.
+
+Fix: frontend commit `6778b2e`. `microsoftLoginUrl()` in `src/api.js` now prepends `import.meta.env.BASE_URL` (the vite base, `/aubounty`) to returnTo when it is missing. The fix lives at the boundary where a router path becomes a full browser redirect. Fixing it in Login.jsx instead would be wrong because the same value feeds internal router navigation after the dev-picker sign-in, where basename-relative is correct. No backend or env change. Frontend image rebuilt, pushed, VM pulled.
+
+### 13.2 peer-mock showed unhealthy
+
+Symptom: `docker compose ps` showed peer-mock unhealthy although `/health` answered ok from inside the container.
+
+Cause: the azure compose defined peer-mock without its own healthcheck, so it inherited the backend image HEALTHCHECK, which probes `/aubounty/api/health`. peer-mock only serves `/health`, so the probe always failed. The root dev compose carries an explicit override for exactly this, and the azure compose was missing it.
+
+Fix: the same healthcheck override from the root compose was added to `docker-compose.azure.yml` and applied with `up -d`. peer-mock then reported healthy. Functionally nothing was broken before, since nothing depends on peer-mock health, but the status was misleading during debugging.

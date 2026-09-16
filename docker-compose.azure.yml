@@ -99,6 +99,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Overrides the image HEALTHCHECK, which probes the api path
+    # /aubounty/api/health that peer-mock does not serve.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||7000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     environment:
       DO_NOT_MIGRATE: "1"
       PORT: "7000"
