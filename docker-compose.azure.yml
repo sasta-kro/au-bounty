@@ -106,7 +106,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/sasta-kro/au-bounty-frontend:0.4
+    image: ghcr.io/sasta-kro/au-bounty-frontend:0.4.1
     depends_on:
       api:
         condition: service_healthy
