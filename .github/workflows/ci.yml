@@ -1,7 +1,13 @@
 name: ci
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -62,3 +68,48 @@ jobs:
       - name: build
         working-directory: frontend
         run: npm run build
+
+  images:
+    name: build and push images
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pinned submodule commits, not their remote heads: an image tag must
+          # map to one exact compatible frontend + backend pair.
+          submodules: recursive
+      - uses: docker/setup-buildx-action@v3
+      - name: short sha
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+      - name: login to ghcr
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u sasta-kro --password-stdin
+      - name: backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64
+          push: true
+          # :sha-<short> is the immutable per-build tag, :main the moving
+          # alias the VM compose tracks. Release numbers are aliases made
+          # later with `docker buildx imagetools create`, never rebuilds.
+          tags: |
+            ghcr.io/sasta-kro/au-bounty-backend:main
+            ghcr.io/sasta-kro/au-bounty-backend:sha-${{ env.SHORT_SHA }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+      - name: frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/amd64
+          push: true
+          # The maps browser key bakes in via frontend/.env.production, which
+          # vite loads in production mode; no build-arg or secret needed here.
+          tags: |
+            ghcr.io/sasta-kro/au-bounty-frontend:main
+            ghcr.io/sasta-kro/au-bounty-frontend:sha-${{ env.SHORT_SHA }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
