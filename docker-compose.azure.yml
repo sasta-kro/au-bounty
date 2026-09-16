@@ -64,7 +64,7 @@ services:
       PORT: "4000"
       CORS_ORIGIN: https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com
       DEV_AUTH: ${DEV_AUTH:-0}
-      # Secrets provider: with SECRETS_PROVIDER=keyvault the six secret values
+      # Secrets provider: with SECRETS_PROVIDER=keyvault the five secret values
       # are fetched from Azure Key Vault at boot (see backend src/lib/secrets.js)
       # and override whatever the environment holds, so these passthroughs stay
       # empty on the VM.
@@ -83,8 +83,9 @@ services:
       # Two proxies in front of the api (gateway nginx + frontend container
       # nginx) so the admin login throttle sees real client addresses.
       TRUST_PROXY: "2"
-      # Admin console accounts are seeded on every boot; the password comes
-      # from the vault (admin-seed-password) via the entrypoint loader.
+      # Admin console accounts are seeded on every boot (entrypoint, before the
+      # app starts, so before the vault loader runs). The demo default password
+      # applies unless ADMIN_SEED_PASSWORD is passed here.
       ADMIN_SEED_EMAILS: ${ADMIN_SEED_EMAILS:-}
       ADMIN_SEED_RESET_PASSWORD: "0"
       SEED_ADMINS: "1"
