@@ -309,3 +309,15 @@ Change the value in the vault (portal or `az keyvault secret set`), then `docker
 ### 14.6 Dev machine incident during this work
 
 Docker Desktop on the Mac crashed with a full disk (Docker.raw had grown to 13G real usage on a nearly full drive). After the crash, freshly pulled images executed their entrypoints as zero byte files (`exec format error`) while the store metadata still reported healthy images. Restarting the app did not repair it. Deleting Docker.raw (the user ran it manually after a full quit) reset the store to factory state and fixed execution. Cost: all local images, containers, and volumes, including another project's stack, which was accepted. The lesson: when the host disk fills during layer extraction, the snapshot store corrupts silently, and app restarts cannot repair it, only a data reset can.
+
+## 15. Release 0.4 (teammate update: admin console, peer removal)
+
+Backend `981a3b9`+ removed the peer API and peer-mock entirely and added boot time admin seeding (`prisma/seedAdmins.js` via the entrypoint, three `admin.*@au.edu` accounts, demo password by default, kept deliberately for the demo). Frontend `37412fb` added the admin login screen. Deployment side changes:
+
+- Image tagging switched from `:latest` to version tags, starting at `:0.4`. Both compose files reference the pinned version.
+- peer-mock service removed from both compose files along with every PEER_* and ALERT_* variable. `docker compose up -d --remove-orphans` dropped the old container on the VM.
+- `TRUST_PROXY: "2"` on the VM api (gateway nginx + frontend container nginx) so the admin login throttle counts real client addresses.
+- Vault: peer-api-key secret deleted (soft deleted, recoverable 90 days). Five secrets remain.
+- Flaky test noted: `tests/files.test.js > unauthenticated callers are rejected` fails roughly 1 run in 3, unrelated to deployment changes (pre-existing race in the teammate's test).
+
+Verification: admins seeded on boot, five vault secrets loaded, peer-mock container gone, `/meta` capabilities unchanged and live, `/aubounty/admin-login` route serves, `POST /auth/admin/login` validates its body.

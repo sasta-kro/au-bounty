@@ -52,7 +52,7 @@ services:
     restart: "no"
 
   api:
-    image: ghcr.io/sasta-kro/au-bounty-backend:latest
+    image: ghcr.io/sasta-kro/au-bounty-backend:0.4
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,6 +79,14 @@ services:
       APP_ORIGIN: https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com
       JWT_SECRET: ${JWT_SECRET:-}
       COOKIE_SECURE: "true"
+      # Two proxies in front of the api (gateway nginx + frontend container
+      # nginx) so the admin login throttle sees real client addresses.
+      TRUST_PROXY: "2"
+      # Admin console accounts are seeded on every boot; the password comes
+      # from the vault (admin-seed-password) via the entrypoint loader.
+      ADMIN_SEED_EMAILS: ${ADMIN_SEED_EMAILS:-}
+      ADMIN_SEED_RESET_PASSWORD: "0"
+      SEED_ADMINS: "1"
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1
       S3_BUCKET: aubounty
@@ -94,43 +102,11 @@ services:
       WEATHER_LAT: "13.6146"
       WEATHER_LON: "100.7121"
       WEATHER_LABEL: Bang Na
-      PEER_INBOUND_API_KEY: ${PEER_API_KEY:-}
-      PEER_OUTBOUND_URL: http://peer-mock:7000
-      PEER_OUTBOUND_API_KEY: ${PEER_API_KEY:-}
-      ALERT_COOLDOWN_MIN: "5"
       SEED_ON_BOOT: "1"
     restart: unless-stopped
 
-  peer-mock:
-    image: ghcr.io/sasta-kro/au-bounty-backend:latest
-    command: ["node", "peer-mock/server.js"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    # Overrides the image HEALTHCHECK, which probes the api path
-    # /aubounty/api/health that peer-mock does not serve.
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||7000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-    environment:
-      DO_NOT_MIGRATE: "1"
-      PORT: "7000"
-      # Same vault bootstrap as the api: with SECRETS_PROVIDER=keyvault the
-      # key is fetched at boot and fills the empty MOCK_API_KEY.
-      SECRETS_PROVIDER: ${SECRETS_PROVIDER:-env}
-      KEY_VAULT_URL: ${KEY_VAULT_URL:-}
-      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
-      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
-      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
-      MOCK_API_KEY: ${MOCK_API_KEY:-}
-    ports:
-      - "127.0.0.1:7090:7000"
-    restart: unless-stopped
-
   frontend:
-    image: ghcr.io/sasta-kro/au-bounty-frontend:latest
+    image: ghcr.io/sasta-kro/au-bounty-frontend:0.4
     depends_on:
       api:
         condition: service_healthy
