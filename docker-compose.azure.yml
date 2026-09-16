@@ -63,12 +63,21 @@ services:
       PORT: "4000"
       CORS_ORIGIN: https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com
       DEV_AUTH: ${DEV_AUTH:-0}
+      # Secrets provider: with SECRETS_PROVIDER=keyvault the six secret values
+      # are fetched from Azure Key Vault at boot (see backend src/lib/secrets.js)
+      # and override whatever the environment holds, so these passthroughs stay
+      # empty on the VM.
+      SECRETS_PROVIDER: ${SECRETS_PROVIDER:-env}
+      KEY_VAULT_URL: ${KEY_VAULT_URL:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
       ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
       AUTH_CALLBACK_BASE: https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com/aubounty/api
       APP_ORIGIN: https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in the env file}
+      JWT_SECRET: ${JWT_SECRET:-}
       COOKIE_SECURE: "true"
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1
@@ -77,7 +86,7 @@ services:
       S3_SECRET_KEY: aubounty
       S3_FORCE_PATH_STYLE: "true"
       MAX_UPLOAD_MB: "10"
-      MAIL_TRANSPORT: console
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-console}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
       GOOGLE_MAPS_KEY: ${GOOGLE_MAPS_KEY:-}
@@ -85,11 +94,10 @@ services:
       WEATHER_LAT: "13.6146"
       WEATHER_LON: "100.7121"
       WEATHER_LABEL: Bang Na
-      PEER_INBOUND_API_KEY: ${PEER_API_KEY:?set PEER_API_KEY in the env file}
+      PEER_INBOUND_API_KEY: ${PEER_API_KEY:-}
       PEER_OUTBOUND_URL: http://peer-mock:7000
-      PEER_OUTBOUND_API_KEY: ${PEER_API_KEY:?set PEER_API_KEY in the env file}
+      PEER_OUTBOUND_API_KEY: ${PEER_API_KEY:-}
       ALERT_COOLDOWN_MIN: "5"
-      SECRETS_PROVIDER: env
       SEED_ON_BOOT: "1"
     restart: unless-stopped
 
@@ -109,7 +117,14 @@ services:
     environment:
       DO_NOT_MIGRATE: "1"
       PORT: "7000"
-      MOCK_API_KEY: ${PEER_API_KEY:?set PEER_API_KEY in the env file}
+      # Same vault bootstrap as the api: with SECRETS_PROVIDER=keyvault the
+      # key is fetched at boot and fills the empty MOCK_API_KEY.
+      SECRETS_PROVIDER: ${SECRETS_PROVIDER:-env}
+      KEY_VAULT_URL: ${KEY_VAULT_URL:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      MOCK_API_KEY: ${MOCK_API_KEY:-}
     ports:
       - "127.0.0.1:7090:7000"
     restart: unless-stopped
