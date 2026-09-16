@@ -1,196 +1,84 @@
 # AU Bounty
 
-This repository is the **umbrella repository** for the AU Bounty project. It coordinates the frontend and backend repositories while keeping both applications in their existing independent Git repositories.
+Campus task and event platform for the CSX4110 term project: students post errands and events, organizations host events with rotating-code check-in, participants chat in real time, and double-blind reviews keep both sides honest.
 
-## Repository Structure
+Live deployment: `https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com/aubounty/`
 
-```text
-au-bounty/
-├── frontend/              # Git submodule
-├── backend/               # Git submodule
-├── docker-compose.yml     # Full-stack local environment
-├── docs/                  # Project-level documentation
-├── .github/workflows/     # Integration and project-level CI
-└── README.md
-```
+## Stack
 
-The application repositories are included as Git submodules:
+- **Backend** (`backend/`, submodule): Node 24, Express 5, Prisma 7 over PostgreSQL 17, Socket.io, zod, vitest
+- **Frontend** (`frontend/`, submodule): React 19, Vite 8, react-router 7, socket.io-client, oxlint
+- **Infrastructure** (this repo): compose files for local and VM deployment, CI that tests and publishes images, documentation
+- **Services**: PostgreSQL, MinIO (S3-compatible attachments), nginx serving the SPA and proxying the API
 
-* Frontend: `minkhaung-mkks/au-bounty-frontend`
-* Backend: `minkhaung-mkks/au-bounty-backend`
+## Documentation
 
-This is not a traditional monorepo. The frontend, backend, and umbrella repository each retain their own Git history.
+| Document | Contents |
+|---|---|
+| [docs/getting-started.md](docs/getting-started.md) | Clone, run the stack, local development, tests |
+| [docs/architecture.md](docs/architecture.md) | Runtime topology, auth, realtime, data model, degradation |
+| [docs/api.md](docs/api.md) | Endpoint reference |
+| [docs/configuration.md](docs/configuration.md) | Every environment variable, secrets and the vault |
+| [docs/deployment.md](docs/deployment.md) | Images, CI, VM runbook, rotation |
+| [docs/reports/](docs/reports/) | Chronological build and deployment history |
 
-## Cloning
-
-Because the project uses Git submodules, clone it with:
+## Quick start
 
 ```bash
-git clone --recurse-submodules <au-bounty-repo-url>
+git clone --recurse-submodules <this repo>
 cd au-bounty
+docker compose up --build
 ```
 
-If the repository was cloned without submodules:
+Open `http://localhost:8080/aubounty/` and sign in as any seeded user. Zero configuration needed. Details and the local-development workflow for each track: [docs/getting-started.md](docs/getting-started.md).
+
+## Repository layout
+
+```
+au-bounty/
+├── frontend/                  git submodule -> minkhaung-mkks/au-bounty-frontend
+├── backend/                   git submodule -> minkhaung-mkks/au-bounty-backend
+├── docker-compose.yml         local full-stack (builds from source)
+├── docker-compose.azure.yml   VM deployment (prebuilt GHCR images)
+├── .env.azure                 template for the VM environment file
+├── .github/workflows/ci.yml   tests, then image build and publish
+└── docs/                      the documentation above
+```
+
+This is not a monorepo: frontend, backend, and the umbrella each keep their own history. The umbrella pins exact submodule commits, so every umbrella commit names a known-compatible pair and every image tag maps back to one.
+
+## Submodule workflow
+
+Work happens inside `frontend/` and `backend/` as normal repositories:
 
 ```bash
-git submodule update --init --recursive
+cd backend
+git checkout main && git pull
+# change, test, commit, push
 ```
 
-## Submodule Versioning
+After a submodule moves, record the new reference here:
 
-Git submodules are pinned to specific commits.
+```bash
+cd ..
+git add backend
+git commit -m "update backend submodule"
+git push
+```
 
-A new frontend or backend commit does **not** automatically update the version referenced by this repository.
+That push is what triggers CI: backend tests and frontend checks first, then both images are built and pushed to GHCR as `:sha-<short>` (immutable, per umbrella commit) and `:main` (moving alias). Release numbers are aliases created from an existing tag, never rebuilds. The VM deployment pulls these images, see [docs/deployment.md](docs/deployment.md).
 
-During active development, the umbrella repository should be updated regularly:
+To fast-forward both submodules to their remote heads and pin them:
 
 ```bash
 git submodule update --remote
 git add frontend backend
-git commit -m "Update application submodules"
+git commit -m "update application submodules"
 git push
 ```
 
-Alternatively, an individual submodule can be updated directly:
+All contributors with write access to the application repositories push normally. Forks are not required.
 
-```bash
-cd frontend
-git pull
-cd ..
+## Commit conventions
 
-git add frontend
-git commit -m "Update frontend submodule"
-```
-
-The same applies to `backend/`.
-
-The pinned commits are useful because every umbrella repository commit identifies an exact compatible combination of:
-
-```text
-frontend commit
-+ backend commit
-+ Compose/configuration/docs
-```
-
-## Working Inside a Submodule
-
-`frontend/` and `backend/` are normal Git repositories.
-
-Changes should be committed and pushed from inside the relevant repository:
-
-```bash
-cd frontend
-
-git checkout <branch>
-git pull
-
-# make changes
-
-git add .
-git commit -m "..."
-git push
-```
-
-After the submodule receives a new commit, the umbrella repository must also record the new reference:
-
-```bash
-cd ..
-
-git add frontend
-git commit -m "Update frontend submodule"
-git push
-```
-
-All contributors with write access to the frontend and backend repositories may push normally. Forks are not required.
-
-## Docker Compose
-
-The root `docker-compose.yml` is intended to provide a single entry point for running the complete application stack.
-
-Typical usage:
-
-```bash
-docker compose up --build
-```
-
-The root Compose configuration may coordinate services such as:
-
-```text
-frontend
-backend
-database
-supporting infrastructure
-```
-
-Repository-specific Compose files may still be retained when useful for standalone frontend or backend development.
-
-## GitHub Actions
-
-Repository-level workflows should focus on concerns that involve the complete application, such as:
-
-* full-stack builds
-* integration tests
-* Docker Compose validation
-* end-to-end tests
-* deployment coordination
-* compatibility between frontend and backend revisions
-
-Frontend-only and backend-only CI should remain in their respective repositories where practical.
-
-When checking out this repository in GitHub Actions, submodules must also be checked out:
-
-```yaml
-- uses: actions/checkout@v4
-  with:
-    submodules: recursive
-```
-
-## Repository Responsibilities
-
-The umbrella repository should contain project-wide concerns such as:
-
-* full-stack Docker Compose configuration
-* architecture documentation
-* developer setup instructions
-* integration and end-to-end testing
-* deployment documentation
-* project-level GitHub Actions
-* API integration notes
-* diagrams and technical decisions
-
-Application-specific source code should remain in the frontend and backend repositories.
-
-## Cross-Repository References
-
-The frontend and backend READMEs should link back to this repository as the main project-level entry point.
-
-Suggested relationship:
-
-```text
-au-bounty
-├── project overview
-├── full-stack setup
-├── architecture
-├── integration
-│
-├── au-bounty-frontend
-│   └── frontend-specific development
-│
-└── au-bounty-backend
-    └── backend-specific development
-```
-
-The umbrella repository should also link directly to both application repositories.
-
-## Team Convention
-
-During active development:
-
-1. Application changes are committed and pushed in the frontend or backend repository.
-2. The umbrella repository is updated to reference the latest compatible submodule commits.
-3. Full-stack behavior is tested from the umbrella repository.
-4. Significant integration requirements are documented here.
-5. Frontend and backend READMEs should direct contributors here for complete project setup.
-
-This keeps application development independent while providing a single reproducible entry point for the full AU Bounty system.
-
+Lowercase action verb plus a short description, no conventional-commit prefixes: `add msal auth flow`, `fix checkin totp window check`, `wire messages screen to socket`. Application code lands only in the submodules. The umbrella takes pin bumps, compose and CI changes, and documentation.

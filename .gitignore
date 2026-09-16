@@ -3,4 +3,4 @@
 .memory/
 docs/*
 !docs/reports/
-!docs/plan/
+!docs/*.md
