@@ -1,6 +1,6 @@
 # Deployment
 
-AU Bounty runs as five containers on the course Azure VM behind the host nginx gateway, from images that CI builds and publishes on every push to main. The full deployment history with every decision is in `docs/reports/2026-09-16-vm-deployment-record.md`; this page is the operating manual.
+AU Bounty runs as three containers on the course Azure VM behind the host nginx gateway, from images that CI builds and publishes on every push to main. This page is the operating manual.
 
 ## Images and tags
 
@@ -32,7 +32,8 @@ https://sai-aike-shwe-tun-aung-backend2.indonesiacentral.cloudapp.azure.com/aubo
   -> host nginx :443 (Let's Encrypt, auto renewing)
   -> frontend container on 127.0.0.1:8090
   -> api container (no published port)
-  -> postgres, minio (no published ports)
+  -> postgres (no published port)
+  -> attachments in Backblaze B2 (no storage container; MinIO is retired from the VM stack)
 ```
 
 Everything except the frontend stays on the internal compose network. Every service runs `restart: unless-stopped`, so the stack returns by itself after a VM reboot. `TRUST_PROXY=2` accounts for the two nginx hops so login throttles see client addresses. `COOKIE_SECURE=true` because the public path is https.
@@ -95,6 +96,6 @@ docker logs au-bounty-api-1 | grep secrets  # the five loaded names, values neve
 
 - The stack survives VM reboots on its own. The old course services on the same VM (PM2 Node API, Go API) do not auto-return after a reboot, which is unrelated to this deployment
 - The TLS certificate renews through certbot. If the VM stays off past the renewal window, renew manually before the next demo
-- MinIO images come from quay.io. MinIO left Docker Hub in 2025 and `minio/minio` there returns "repository does not exist". A local image cache can hide this
+- MinIO images come from quay.io in the local compose files. MinIO left Docker Hub in 2025 and `minio/minio` there returns "repository does not exist". A local image cache can hide this
 - The maps browser key is public by design inside the bundle. Its safety is the HTTP referrer restriction in the Google console covering the VM domain. Rotating it means editing `frontend/.env.production` and letting CI rebuild
 - Cost posture: the vault, managed identities, and CI are inside free tiers. The VM's public IPv4 is what bills while the VM runs

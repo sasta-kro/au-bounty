@@ -75,4 +75,3 @@ The interactive map picker and Places autocomplete in the create form need a Goo
 - `docs/api.md` for the endpoint reference
 - `docs/configuration.md` for every environment variable
 - `docs/deployment.md` for images, CI, and the VM runbook
-- `docs/reports/` for the chronological build and deployment history

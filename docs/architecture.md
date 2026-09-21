@@ -28,7 +28,8 @@ browser
        └─ /aubounty/*           SPA history fallback
   -> api container (Express :4000)
        ├─ postgres container (no published ports)
-       └─ minio container (no published ports)
+       └─ attachments in Backblaze B2 (no storage container on the VM;
+          the local compose runs MinIO for the same purpose)
 ```
 
 Two nginx layers do different jobs. The host nginx terminates TLS and forwards everything under `/aubounty/` to the frontend container. The frontend container nginx splits static assets, API traffic, and websocket traffic, and serves the SPA. The `/aubounty` path prefix is fixed in code (`backend/src/app.js` defines `API_PREFIX = '/aubounty/api'`, the socket path is `/aubounty/socket.io`), not a deployment variable.
