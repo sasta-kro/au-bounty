@@ -61,7 +61,7 @@ This is not a monorepo: frontend, backend, and the umbrella each keep their own 
 
 ## Submodule workflow
 
-Work happens inside `frontend/` and `backend/` as normal repositories:
+Work happens inside `frontend/` and `backend/` as normal repositories. The commands below are for the three team members, who push directly to `main` in all three repositories:
 
 ```bash
 cd backend
@@ -89,11 +89,7 @@ git commit -m "update application submodules"
 git push
 ```
 
-All contributors with write access to the application repositories push normally. Forks are not required.
-
-## Commit conventions
-
-Lowercase action verb plus a short description, no conventional-commit prefixes: `add msal auth flow`, `fix checkin totp window check`, `wire messages screen to socket`. Application code lands only in the submodules. The umbrella takes pin bumps, compose and CI changes, and documentation.
+Anyone else is welcome to contribute: fork the repository you want to change (this one, `au-bounty-backend`, or `au-bounty-frontend`), and open a pull request against its `main`. The team reviews pull requests and approves them at their discretion.
 
 ## Team
 
