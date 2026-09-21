@@ -1,6 +1,9 @@
 .idea/
 .DS_Store
 .memory/
+.env.azure
+temp-3-needed-env-vals.txt
+brag-output/
 docs/*
 !docs/reports/
 !docs/*.md
