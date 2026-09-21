@@ -22,4 +22,9 @@ publication). The SPA is served under `/aubounty/` (vite base and nginx mount
 agree), the API health check lives at `/aubounty/api/health`, and MinIO
 presigned URLs resolve through `http://localhost:9100`, which is what makes
 the upload/download journeys real. The `PEER_HOST_PORT=7001` in the webServer
-command is vestigial and harmless.
+command is vestigial and harmless. Two quirks the tests work around: nginx
+answers the bare mount root (`/aubounty`, no trailing slash) with an absolute
+redirect that drops the port, so tests never load that URL and normalize with
+`./` before reloading; and the presign host only becomes
+`localhost:9100` after a stack recreate (`docker compose up -d --build
+--wait`, which the webServer hook runs on any cold start).

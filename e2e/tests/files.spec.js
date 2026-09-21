@@ -37,7 +37,7 @@ test.describe('attachments', () => {
   })
 
   test.afterEach(async ({ request }) => {
-    await cancelTask(request, posterId, task.id)
+    if (task) await cancelTask(request, posterId, task.id)
   })
 
   test('task attachment uploads and downloads back', async ({ page }) => {
