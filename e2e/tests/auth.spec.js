@@ -6,7 +6,7 @@ const { NAMES, signIn, signOut } = require('./helpers')
 
 test.describe('picker auth', () => {
   test('picker login lands on the board', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     // Nobody signed in: the app routes to the login screen.
     await expect(page).toHaveURL(/\/login$/)
     await expect(page.getByText('Pick one of the seeded accounts.')).toBeVisible()
@@ -20,6 +20,11 @@ test.describe('picker auth', () => {
   test('session survives a reload', async ({ page }) => {
     await signIn(page, NAMES.studentFive)
 
+    // The router parks the board at the mount root without its trailing slash,
+    // which nginx answers with a port-dropping redirect; normalize first, let
+    // the document settle, then reload.
+    await page.goto('./')
+    await expect(page.getByRole('heading', { name: 'Bounty board' })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Bounty board' })).toBeVisible()
     await expect(page.locator('.sidebar')).toContainText(NAMES.studentFive)

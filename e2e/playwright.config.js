@@ -19,7 +19,10 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   use: {
-    baseURL: BASE_URL,
+    // Trailing slash so relative page paths ('login', 'tasks/<id>') keep the
+    // /aubounty mount. Never navigate the bare origin: nginx answers it with a
+    // 302 to http://localhost/aubounty/ (port 80), which refuses.
+    baseURL: `${BASE_URL}/`,
     actionTimeout: 15_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

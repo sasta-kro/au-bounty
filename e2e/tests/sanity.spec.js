@@ -13,10 +13,12 @@ function collectErrors(page, errors) {
 
 test.describe('no console errors', () => {
   test('board and task detail are clean', async ({ page }) => {
+    await signIn(page, NAMES.student)
+
+    // The login document 401s /me by design ("nobody signed in"), so counting
+    // starts once the session exists.
     const errors = []
     collectErrors(page, errors)
-
-    await signIn(page, NAMES.student)
 
     // Let the board settle: cards, weather chip, socket connection.
     await expect(page.locator('.task-card').first()).toBeVisible()
@@ -35,13 +37,13 @@ test.describe('no console errors', () => {
   })
 
   test('board search round trip is clean', async ({ page }) => {
+    await signIn(page, NAMES.student)
+
     const errors = []
     collectErrors(page, errors)
-
-    await signIn(page, NAMES.student)
     await searchBoard(page, 'no-such-pw-title')
     await expect(page.getByText(/Nothing matches/)).toBeVisible()
-    await page.getByLabel('Clear search').click()
+    await page.getByRole('button', { name: 'Clear search' }).click()
     await expect(page.locator('.task-card').first()).toBeVisible()
     await page.waitForTimeout(1000)
     expect(errors, errors.join('\n')).toEqual([])

@@ -5,6 +5,8 @@
 const { expect, test } = require('@playwright/test')
 
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:8080/aubounty'
+// Manual browser.newContext calls need the mount-preserving form themselves.
+const PAGE_BASE_URL = `${BASE_URL}/`
 const API = '/aubounty/api'
 
 // Seeded by backend/prisma/seed.js; the Campus Safety SERVICE account is
@@ -94,7 +96,7 @@ async function advanceClock(request, days = 2) {
 
 /** Signs in through the dev picker and waits for the board. */
 async function signIn(page, name) {
-  await page.goto('/login')
+  await page.goto('login')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   const card = page.locator('.login-panel button.card').filter({ hasText: name })
   await expect(card).toBeVisible()
@@ -111,8 +113,9 @@ async function signOut(page) {
 
 /** Types into the topbar search and waits out the 300ms debounce + refetch. */
 async function searchBoard(page, query) {
-  await page.getByLabel('Search').fill(query)
-  await expect(page.getByLabel('Search')).toHaveValue(query)
+  const box = page.getByRole('textbox', { name: 'Search' })
+  await box.fill(query)
+  await expect(box).toHaveValue(query)
   // One bounded beat for the debounce; assertions after it auto-retry anyway.
   await page.waitForTimeout(450)
 }
@@ -126,6 +129,7 @@ function desktopOnly() {
 
 module.exports = {
   BASE_URL,
+  PAGE_BASE_URL,
   API,
   NAMES,
   pwId,
