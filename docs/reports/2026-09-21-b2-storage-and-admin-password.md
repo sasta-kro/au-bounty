@@ -16,6 +16,24 @@ is held for an explicit go. The database and its test data are untouched.
   values. It is a superset of the VM env file, so copying it over the VM copy
   loses nothing. chmod 600.
 
+## Requirement change: AWS S3 -> Backblaze B2 (same S3 API)
+
+The storage requirement was "cloud object storage for attachments". It was
+implemented against the S3 API with a swappable endpoint from the start, so
+the production target was a free choice. It changed from AWS S3 to Backblaze
+B2 for this deployment:
+
+- No AWS account work. B2 reuses an account the team already has.
+- Free tier fits the load: 10 GB storage, 1 GB/day download.
+- B2 speaks the same S3 API. The switch is six environment variables. No
+  backend code changed, and the `S3_*` names stay because they name the
+  protocol, not the provider. Moving to AWS or another S3-compatible store
+  later stays env-only for the same reason.
+
+Known trade-off: attachments uploaded to MinIO during VM testing do not
+migrate. Their presigned downloads stop resolving after the switch. New
+uploads land in B2.
+
 ## Backblaze B2 bucket
 
 - Bucket `au-bounty-s3-bucket`, private, region `us-west-004`.
