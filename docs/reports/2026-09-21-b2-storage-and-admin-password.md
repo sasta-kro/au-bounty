@@ -99,3 +99,26 @@ a stale IP for `api` (it resolves the name once at start), so all proxied API
 calls 504ed until `docker restart au-bounty-frontend-1`. After any api-only
 recreate, restart the frontend too, or switch the frontend nginx to docker's
 embedded resolver (`resolver 127.0.0.11` with a variable proxy_pass target).
+
+## Postscript: maps key stripped from the bundle (fixed same day)
+
+Symptom after the deploy above: the create form said "Place search is
+unavailable" and "Post to board" appeared dead. Two independent frontend
+bugs:
+
+1. The frontend Dockerfile set `ENV VITE_GOOGLE_MAPS_KEY` from an optional
+   ARG. Without a build-arg the env var exists empty, and a real env var
+   beats `.env.production` in Vite even when empty. The bundler folded the
+   key to `''` and dead-code-eliminated the whole Maps loader, so the served
+   bundle had no `maps.googleapis` at all. Fix: the ARG/ENV lines are gone
+   (`434c4dc`); the tracked `.env.production` is the only mechanism.
+2. The submit handler blocked an empty place name by design, but rendered
+   the reason inside the collapsed coordinate accordion and never opened it,
+   so the button looked dead. Fix: that branch now opens the section
+   (`142ba70`), matching the coordinate-validation branch.
+
+Redeployed at `:main`, verified: live bundle `index-9zmAnwnr.js` carries the
+browser key and loader, Places suggestions return in the browser, the error
+message shows with the section open, smoke 12/12. If the Google console ever
+restricts the browser key by referrer, both the local origin and the VM
+origin must stay on the allow list.
