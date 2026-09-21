@@ -87,7 +87,10 @@ services:
       # app starts, so before the vault loader runs). The demo default password
       # applies unless ADMIN_SEED_PASSWORD is passed here.
       ADMIN_SEED_EMAILS: ${ADMIN_SEED_EMAILS:-}
-      ADMIN_SEED_RESET_PASSWORD: "0"
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-}
+      # 1 for one boot overwrites the password of already-seeded admins,
+      # then set it back to 0.
+      ADMIN_SEED_RESET_PASSWORD: ${ADMIN_SEED_RESET_PASSWORD:-0}
       SEED_ADMINS: "1"
       S3_ENDPOINT: http://minio:9000
       # Browser-facing origin for presigned upload/download URLs. Empty falls
