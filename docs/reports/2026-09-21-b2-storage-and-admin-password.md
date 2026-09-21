@@ -1,8 +1,8 @@
-# 2026-09-21: Backblaze B2 storage switch + admin password (staged, deploy held)
+# 2026-09-21: Backblaze B2 storage switch + admin password (deployed)
 
 Follows `2026-09-16-vm-deployment-record.md`. Same VM, same directory
-(`~/apps/au-bounty`). Nothing in this note has been deployed yet: the restart
-is held for an explicit go. The database and its test data are untouched.
+(`~/apps/au-bounty`). Deployed the same day by the product owner, verified
+after. The database and its test data are untouched.
 
 ## What changed in the repo
 
@@ -77,13 +77,25 @@ S3 API or `b2 bucket update --cors-rules`.
 - Password stored where the user asked: `~/apps/au-bounty/admin-password.txt`
   on the VM (chmod 600) and `.memory/admin-credentials.md` locally.
 
-## Remaining steps when the go comes
+## How the deploy went (2026-09-21)
 
-1. Copy `.env.azure` and `docker-compose.azure.yml` to `~/apps/au-bounty/` on
-   the VM (both are ready; the compose copy on the VM predates the S3
-   passthrough change).
-2. `docker compose -f docker-compose.azure.yml --env-file .env.azure pull &&
-   docker compose -f docker-compose.azure.yml --env-file .env.azure up -d --wait`
-3. Verify admin login at `/aubounty/api/auth/admin/login`, verify an
-   attachment upload lands in B2, run `scripts/prod-smoke.sh`.
-4. Set `ADMIN_SEED_RESET_PASSWORD=0`, restart once more.
+1. Env and compose copied to the VM, images pulled at `:main`, `up -d --wait`.
+   Both images carried the bounty logo (frontend `db3396b`).
+2. Admin password applied on first boot (`ADMIN_SEED_RESET_PASSWORD=1`):
+   login answered 200 with the new password, 401 with the old one. The flag
+   then went back to 0 on the VM and in the local mirror, api restarted,
+   password kept working.
+3. B2 verified end to end: the api container holds the B2 env, the bucket
+   CORS preflight answers `access-control-allow-origin` for the site origin
+   with PUT allowed, and a presigned PUT/GET/Delete round trip through the
+   same credentials returned 200 with matching bytes.
+4. MinIO retired from the VM stack (blocks commented in the compose with the
+   reason and rollback path). `up -d --remove-orphans` removed the two
+   containers. The `aubounty-miniodata` volume stays.
+5. `scripts/prod-smoke.sh`: 12/12.
+
+Operational note: recreating the api container alone gave the frontend nginx
+a stale IP for `api` (it resolves the name once at start), so all proxied API
+calls 504ed until `docker restart au-bounty-frontend-1`. After any api-only
+recreate, restart the frontend too, or switch the frontend nginx to docker's
+embedded resolver (`resolver 127.0.0.11` with a variable proxy_pass target).
