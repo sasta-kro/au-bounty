@@ -21,7 +21,7 @@ git submodule update --init --recursive
 ## Run the full stack (closest to production)
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 Five services come up: postgres 17, MinIO with the bucket created, the API on `http://localhost:4000/aubounty/api`, and the frontend on `http://localhost:8080/aubounty/`. A freshly created database is migrated and seeded with demo data automatically (users, organizations, tags, tasks, assignments, reviews). Open `http://localhost:8080/aubounty/` and pick any seeded user from the sign-in list.

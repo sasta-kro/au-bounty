@@ -86,7 +86,7 @@ The "AuBounty" registration is single tenant with two Web redirect URIs: the loc
 ```bash
 curl https://<fqdn>/aubounty/api/health     # {"ok":true,"version":...}
 curl https://<fqdn>/aubounty/api/meta       # capabilities and auth state
-docker compose ps                           # all healthy
+docker compose -f docker-compose.azure.yml --env-file .env.azure ps   # all healthy
 docker logs au-bounty-api-1 | grep secrets  # the five loaded names, values never logged
 ```
 

@@ -48,7 +48,7 @@ module.exports = defineConfig({
   webServer: {
     // PEER_HOST_PORT is vestigial (the peer service was removed in release
     // 0.4) but harmless; kept so the command matches the documented stack boot.
-    command: 'PEER_HOST_PORT=7001 docker compose up -d --build --wait',
+    command: 'PEER_HOST_PORT=7001 docker compose -f docker-compose.dev.yml up -d --build --wait',
     cwd: '..',
     url: `${BASE_URL}/api/health`,
     reuseExistingServer: !process.env.CI,

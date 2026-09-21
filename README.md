@@ -39,7 +39,7 @@ This is the umbrella repository. The application code lives in two independent r
 ```bash
 git clone --recurse-submodules <this repo>
 cd au-bounty
-docker compose up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 Open `http://localhost:8080/aubounty/` and sign in as any seeded user. Zero configuration needed. Details and the local-development workflow for each track: [docs/getting-started.md](docs/getting-started.md).
@@ -50,7 +50,7 @@ Open `http://localhost:8080/aubounty/` and sign in as any seeded user. Zero conf
 au-bounty/
 ├── frontend/                  git submodule -> minkhaung-mkks/au-bounty-frontend
 ├── backend/                   git submodule -> minkhaung-mkks/au-bounty-backend
-├── docker-compose.yml         local full-stack (builds from source)
+├── docker-compose.dev.yml     local full-stack (builds from source)
 ├── docker-compose.azure.yml   VM deployment (prebuilt GHCR images)
 ├── .env.azure.template        template for the VM environment file
 ├── .github/workflows/ci.yml   tests, then image build and publish
